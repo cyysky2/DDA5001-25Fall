@@ -140,6 +140,7 @@ class GPT(nn.Module):
         # init all weights
         self.apply(self._init_weights)
         # apply special scaled init to the residual projections, per GPT-2 paper
+        # The factor 1 / sqrt(2 * n_layer) roughly scales the residual step size so that the total variance doesn’t blow up as you stack many layers (idea from GPT-2 paper).
         for pn, p in self.named_parameters():
             if pn.endswith('c_proj.weight'):
                 torch.nn.init.normal_(p, mean=0.0, std=0.02/math.sqrt(2 * config.n_layer))
@@ -167,6 +168,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
+    # targets: optional tensor of true next-token IDs with the same shape; used to compute cross-entropy loss.
     def forward(self, idx, targets=None):
         device = idx.device
         b, t = idx.size()
@@ -323,6 +325,7 @@ class GPT(nn.Module):
             # apply softmax to convert logits to (normalized) probabilities
             probs = F.softmax(logits, dim=-1)
             # sample from the distribution
+            # torch.multinomial samples a token id according to these probabilities (stochastic sampling, not argmax).
             idx_next = torch.multinomial(probs, num_samples=1)
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
