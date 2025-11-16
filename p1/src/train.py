@@ -35,7 +35,7 @@ torch._dynamo.config.suppress_errors = True
 
 import matplotlib.pyplot as plt
 
-student_id = 123456 # change to your student id
+student_id = 119010315 # change to your student id
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
