@@ -65,35 +65,43 @@ def prepare_tokenize_and_save(
 
         # TODO:
         # We need to convert the chat templates to strings first to use the main tokenizer call
+        system_prompt = "\nPlease reason step by step, and put your final answer within \\boxed{}."
         full_chats = [
             [
-                {"role": "user", "content": p + XXX},
+                {"role": "user", "content": p + system_prompt},
                 {"role": "assistant", "content": r},
             ]
             for p, r in zip(prompts, responses)
         ]
+        # tokenize=False: return the raw string instead of converting it to integers immediately
+        # add_generation_prompt=False: whether to append the "start token" for the Assistant (<|assistant|>) at the very end of the string
+        # enable_thinking=False: It controls whether to insert a <think> (or similar) tag immediately after the Assistant header (<|assistant|><think>\n)
         full_texts = [
-            tokenizer.apply_chat_template(conversation=XXX,
+            tokenizer.apply_chat_template(conversation=chat,
                                           tokenize=False,
                                           add_generation_prompt=False,
                                           enable_thinking=False)
-            for XXX in XXX
+            for chat in full_chats
         ]
 
 
         # Tokenize prompts separately to calculate their length for masking
         prompt_only_chats = [
-            [{"role": "user", "content": p + XXX}] for p in prompts
+            [{"role": "user", "content": p + system_prompt}] for p in prompts
         ]
         prompt_texts = [
-            tokenizer.apply_chat_template(conversation=XXX,
+            tokenizer.apply_chat_template(conversation=prompt,
                                           tokenize=False,
                                           add_generation_prompt=True,
                                           enable_thinking=False)
-            for XXX in XXX
+            for prompt in prompt_only_chats
         ]
 
         # Use the tokenizer's main `__call__` method to get input_ids AND attention_mask
+        # {
+        # "input_ids": [Batch_Size, Sequence_Length]: sentences (in token id),
+        # "attention_mask": [Batch_Size, Sequence_Length]: indicator: what is real data and what is padding
+        # }
         tokenized_outputs = tokenizer(
             full_texts,
             max_length=max_length,
@@ -107,9 +115,9 @@ def prepare_tokenize_and_save(
         # Create labels by masking prompt tokens
         labels_list = []
         for i, full_ids in enumerate(tokenized_outputs["input_ids"]):
-            prompt_len = len(tokenized_prompts["input_ids"][i])
-            label = list(full_ids)  # Copy input_ids
-            label[:XXX] = [-100] * XXX  # Mask prompt when calculating loss
+            prompt_len = len(tokenized_prompts["input_ids"][i]) # [sequence_length]
+            label = list(full_ids)  # Copy input_ids # [sequence_length]
+            label[:prompt_len] = [-100] * prompt_len  # Mask prompt when calculating loss
             labels_list.append(label)
 
         # Add labels to our dictionary
