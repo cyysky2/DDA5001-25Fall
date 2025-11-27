@@ -173,12 +173,58 @@ def main():
     if torch.cuda.is_available():
         cuda_device = torch.device(device)
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name,
-        trust_remote_code=True,
-        torch_dtype=dtype
-    ).to(device)
+    local_tokenizer_path = "./Qwen3-0.6B"
+    tokenizer = None
+    local_success = False
+    if os.path.exists(local_tokenizer_path):
+        try:
+            print(f"📂 Found local folder '{local_tokenizer_path}'. Attempting to load...")
+            # local_files_only=True ensures we don't accidentally ping the internet
+            tokenizer = AutoTokenizer.from_pretrained(local_tokenizer_path, trust_remote_code=True, local_files_only=True)
+            print("✅ Success: Loaded tokenizer locally.")
+            local_success = True
+        except Exception as e:
+            print(f"⚠️ Local load failed (Files might be corrupted): {e}")
+    if not local_success:
+        try:
+            print(f"🌐 Attempting to download from Hugging Face: '{args.model_name}'...")
+            tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
+            print("✅ Success: Loaded tokenizer remotely.")
+        except Exception as e:
+            print(f"❌ Critical: Remote download also failed. Error: {e}")
+            exit(1)
+
+    local_model_path = "./Qwen3-0.6B"
+    model = None
+    local_success = False
+    if os.path.exists(local_model_path):
+        try:
+            print(f"📂 Found local model folder '{local_model_path}'. Attempting to load...")
+            model = AutoModelForCausalLM.from_pretrained(
+                local_model_path,
+                trust_remote_code=True,
+                local_files_only=True,
+                torch_dtype=dtype
+            ).to(device)
+            print("✅ Success: Loaded model locally.")
+            local_success = True
+        except Exception as e:
+            print(f"⚠️ Local model load failed (files may be incomplete/corrupted): {e}")
+
+    # ----- Fallback: Try remote model name -----
+    if not local_success:
+        try:
+            print(f"🌐 Attempting to download model from Hugging Face: '{args.model_name}'...")
+            model = AutoModelForCausalLM.from_pretrained(
+                args.model_name,
+                trust_remote_code=True,
+                torch_dtype=dtype
+            ).to(device)
+            print("✅ Success: Loaded model remotely.")
+        except Exception as e:
+            print(f"❌ Critical: Remote download also failed. Error: {e}")
+            exit(1)
+
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
