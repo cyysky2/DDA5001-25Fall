@@ -7,6 +7,8 @@ import pickle
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 # =====================================================================================
 # B. CORE DATA PREPARATION FUNCTION
 # =====================================================================================
@@ -29,11 +31,62 @@ def prepare_tokenize_and_save(
     # -----------------------------------------------------------------
     # 1. Load Tokenizer and Dataset from Hugging Face Hub
     # -----------------------------------------------------------------
-    print(f"Loading tokenizer: '{tokenizer_name}'")
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
+    # LOAD TOKENIZER ---
+    local_model_path = "./Qwen3-0.6B"    
+    print(f"--- Processing Tokenizer ---")
+    tokenizer = None
+    local_success = False
+    # Step A: Try Local
+    if os.path.exists(local_model_path):
+        try:
+            print(f"📂 Found local folder '{local_model_path}'. Attempting to load...")
+            # local_files_only=True ensures we don't accidentally ping the internet
+            tokenizer = AutoTokenizer.from_pretrained(local_model_path, trust_remote_code=True, local_files_only=True)
+            print("✅ Success: Loaded tokenizer locally.")
+            local_success = True
+        except Exception as e:
+            print(f"⚠️ Local load failed (Files might be corrupted): {e}")
+    else:
+        print(f"ℹ️  Local folder '{local_model_path}' not found.")
+    
+    # Step B: Try Remote (Only if local failed or didn't exist)
+    if not local_success:
+        try:
+            print(f"🌐 Attempting to download from Hugging Face: '{tokenizer_name}'...")
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
+            print("✅ Success: Loaded tokenizer remotely.")
+        except Exception as e:
+            print(f"❌ Critical: Remote download also failed. Error: {e}")
+            exit(1)
 
-    print(f"Loading dataset: '{dataset_name}'")
-    original_dataset = load_dataset(dataset_name, split="train")
+    # LOAD DATASET ---
+    local_dataset_path = "./MATH-500"
+    print(f"\n--- Processing Dataset ---")
+    original_dataset = None
+    local_success = False
+    
+    # Step A: Try Local
+    if os.path.exists(local_dataset_path):
+        try:
+            print(f"📂 Found local folder '{local_dataset_path}'. Attempting to load...")
+            # Loading from a local git-cloned folder
+            original_dataset = load_dataset(local_dataset_path, split="train")
+            print("✅ Success: Loaded dataset locally.")
+            local_success = True
+        except Exception as e:
+            print(f"⚠️ Local load failed: {e}")
+    else:
+        print(f"ℹ️  Local folder '{local_dataset_path}' not found.")
+    
+    # Step B: Try Remote (Only if local failed or didn't exist)
+    if not local_success:
+        try:
+            print(f"🌐 Attempting to download from Hugging Face: '{dataset_name}'...")
+            original_dataset = load_dataset(dataset_name, split="train")
+            print("✅ Success: Loaded dataset remotely.")
+        except Exception as e:
+            print(f"❌ Critical: Remote download also failed. Error: {e}")
+            exit(1)
 
     if debug_mode:
         num_samples = len(original_dataset) // 20
