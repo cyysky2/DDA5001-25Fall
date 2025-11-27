@@ -40,7 +40,7 @@ If you are using Windows, then run the following commands in **PowerShell**:
 if (Test-Path "latest_code") { rm -r -fo latest_code }
 
 # Create the new folder
-mkdir latest_code/src -Force | Out-Null
+mkdir latest_code/ -Force | Out-Null
 
 # Copy everything except the excluded files/folders
 robocopy .\src latest_code\ /E /XD latest_code runs __pycache__ .git /XF *.json *.pt
@@ -50,7 +50,7 @@ If you are using Linux or MacOS, run the following command in terminal:
 
 ```bash
 rm -rf latest_code # if the folder already exists, remove it
-mkdir -p latest_code/src
+mkdir -p latest_code/
 rsync -av --exclude "runs" --exclude "*.json"  --exclude "__pycache__" --exclude ".git" --exclude "*.pt"  ./src ./latest_code/ # pack all the code into the latest_code folder. You may want to add excluded files here
 ```
 
