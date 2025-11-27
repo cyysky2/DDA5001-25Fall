@@ -152,14 +152,17 @@ def prepare_tokenize_and_save(
 
         # Use the tokenizer's main `__call__` method to get input_ids AND attention_mask
         # {
-        # "input_ids": [Batch_Size, Sequence_Length]: sentences (in token id),
-        # "attention_mask": [Batch_Size, Sequence_Length]: indicator: what is real data and what is padding
+        # "input_ids": Batch_Size x Sequence_Length (variable): sentences (in token id).
+        # "attention_mask": Batch_Size x Sequence_Length (variable): indicator: what is real data and what is padding
         # }
+        # Note that Sequence_Length is different for different sentences.
+        # If padding=False, you do not get a perfect rectangular Matrix. You get a Jagged List.
+        # We will pad later in data_collator class (finetune.py -> SmartDataCollator)
         tokenized_outputs = tokenizer(
             full_texts,
             max_length=max_length,
             truncation=True,
-            padding=False,  # Collator will handle padding
+            padding=False,  # Collator will handle padding -> dynamic padding
         )
         tokenized_prompts = tokenizer(
             prompt_texts, max_length=max_length, truncation=True
@@ -168,12 +171,13 @@ def prepare_tokenize_and_save(
         # Create labels by masking prompt tokens
         labels_list = []
         for i, full_ids in enumerate(tokenized_outputs["input_ids"]):
-            prompt_len = len(tokenized_prompts["input_ids"][i]) # [sequence_length]
-            label = list(full_ids)  # Copy input_ids # [sequence_length]
+            prompt_len = len(tokenized_prompts["input_ids"][i]) # sequence_length
+            label = list(full_ids)  # Copy input_ids # sequence_length
             label[:prompt_len] = [-100] * prompt_len  # Mask prompt when calculating loss
             labels_list.append(label)
 
         # Add labels to our dictionary
+        # [-100, -100, -100, 500, 600]
         tokenized_outputs["labels"] = labels_list
         return tokenized_outputs
 
