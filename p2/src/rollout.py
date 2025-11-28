@@ -32,7 +32,33 @@ def main(model_name, output_filename, lora_path=None):
                                    Defaults to None.
     """
     # 1. Load MATH-500 test set
-    ds = load_dataset("ricdomolm/MATH-500", split="test")
+    local_dataset_path = "./MATH-500"
+    ds = None
+    local_success = False
+
+    # Step A: Try Local
+    if os.path.exists(local_dataset_path):
+        try:
+            print(f"📂 Found local folder '{local_dataset_path}'. Attempting to load...")
+            # Loading from a local git-cloned folder
+            ds = load_dataset(local_dataset_path, split="test")
+            print("✅ Success: Loaded dataset locally.")
+            local_success = True
+        except Exception as e:
+            print(f"⚠️ Local load failed: {e}")
+    else:
+        print(f"ℹ️  Local folder '{local_dataset_path}' not found.")
+
+    # Step B: Try Remote (Only if local failed or didn't exist)
+    if not local_success:
+        try:
+            print(f"🌐 Attempting to download from Hugging Face: ricdomolm/MATH-500...")
+            ds = load_dataset("ricdomolm/MATH-500", split="test")
+            print("✅ Success: Loaded dataset remotely.")
+        except Exception as e:
+            print(f"❌ Critical: Remote download also failed. Error: {e}")
+            exit(1)
+
     prompts = ds["problem"]  # question text
     gold_answers = ds["answer"]  # gold answers aligned by index
 
