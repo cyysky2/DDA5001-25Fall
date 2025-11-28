@@ -96,12 +96,46 @@ def main(model_name, output_filename, lora_path=None):
     
     # The inference speed will be significantly slower if we use float32 here.
     dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        trust_remote_code=True,
-        torch_dtype=dtype,
-        device_map="auto"  # Automatically maps the model to available GPUs
-    )
+    model = None
+    if model_name == "Qwen/Qwen3-0.6B-Base" and lora_path:
+        local_model_path = "./Qwen3-0.6B"
+        local_success = False
+        if os.path.exists(local_model_path):
+            try:
+                print(f"📂 Found local model folder '{local_model_path}'. Attempting to load...")
+                model = AutoModelForCausalLM.from_pretrained(
+                    local_model_path,
+                    trust_remote_code=True,
+                    local_files_only=True,
+                    torch_dtype=dtype,
+                    device_map="auto"
+                )
+                print("✅ Success: Loaded model locally.")
+                local_success = True
+            except Exception as e:
+                print(f"⚠️ Local model load failed (files may be incomplete/corrupted): {e}")
+
+        # ----- Fallback: Try remote model name -----
+        if not local_success:
+            try:
+                print(f"🌐 Attempting to download model from Hugging Face: '{model_name}'...")
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    trust_remote_code=True,
+                    torch_dtype=dtype,
+                    device_map = "auto"
+                )
+                print("✅ Success: Loaded model remotely.")
+            except Exception as e:
+                print(f"❌ Critical: Remote download also failed. Error: {e}")
+                exit(1)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            trust_remote_code=True,
+            torch_dtype=dtype,
+            device_map="auto"  # Automatically maps the model to available GPUs
+        )
 
     if lora_path:
         print(f"LoRA adapter specified. Loading from local path: {lora_path}")
