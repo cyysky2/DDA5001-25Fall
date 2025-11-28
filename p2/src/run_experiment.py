@@ -16,18 +16,18 @@ def main():
     # ============================================================================
 
     # ----- Optimizer setting -----
-    optimization_methods = ["adam", "sgd", "lora"]        # ["adam", "sgd", "lora"]
+    optimization_methods = ["lora"]        # ["adam", "sgd", "lora"]
 
     # ----- Learning rate -----
-    learning_rates = [2e-5, 5e-5]               # e.g., [2e-5, 5e-5]
+    learning_rates = [0.0001]            # e.g., [2e-5, 5e-5]
 
     # ----- Batch size & grad accumulation -----
-    batch_sizes = [2]                      # e.g., [2, 4]
+    batch_sizes = [4]                      # e.g., [2, 4]
     grad_accumulation_steps_list = [4]
 
     # ----- LoRA-specific hyperparameters -----
-    lora_ranks = [8]                       # e.g., [4, 8, 16]
-    lora_dropouts = [0.1]                # e.g., [0.05, 0.1, 0.2]
+    lora_ranks = [8,16,32]                       # e.g., [4, 8, 16]
+    lora_dropouts = [0.1, 0.2]              # e.g., [0.05, 0.1, 0.2]
 
     # LoRA target modules
     '''
@@ -47,7 +47,7 @@ def main():
     ]
 
     # ----- Training duration -----
-    num_epochs_list = [1,2]                  # e.g., [1, 3]
+    num_epochs_list = [2]                  # e.g., [1, 3]
 
     # ----- Model & data settings -----
     model_names = ["Qwen/Qwen3-0.6B-Base"]
