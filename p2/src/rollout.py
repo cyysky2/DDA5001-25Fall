@@ -20,7 +20,7 @@ def set_seed(seed):
 set_seed(42)
 
 
-def main(model_name, output_filename, lora_path=None):
+def main(model_name, output_filename, lora_path=None,  temperature=1.0):
     """
     Runs the MATH-500 test set evaluation with a specified model and an optional local LoRA adapter
     using the Hugging Face Transformers library, and saves the results to a specified JSONL file.
@@ -155,12 +155,13 @@ def main(model_name, output_filename, lora_path=None):
 
     # Generation parameters (equivalent to vLLM's SamplingParams)
     generation_kwargs = {
-        "temperature": 1.0,
+        "temperature": float(temperature),
         "top_p": 0.95,
         "max_new_tokens": 512,  # Note: transformers uses max_new_tokens
         "repetition_penalty": 1.0,
         "do_sample": True, # Required for temperature and top_p to have an effect
     }
+    print(f"Using generation temperature = {generation_kwargs['temperature']}")
 
     # 4. Generate in batches
     batch_size = 64 # A smaller batch size is often safer for Transformers to avoid OOM issues
@@ -185,7 +186,8 @@ def main(model_name, output_filename, lora_path=None):
                 "id": orig_idx,
                 "prompt": prompts[orig_idx],
                 "answer": gen_text,
-                "gold": gold_answers[orig_idx]
+                "gold": gold_answers[orig_idx],
+                "temperature": generation_kwargs["temperature"],
             })
         print(f"Processed batch {i//batch_size + 1}/{(len(prompt_strs) + batch_size - 1)//batch_size}")
 
@@ -204,5 +206,11 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, required=True, help="The Hugging Face model to use for generation.")
     parser.add_argument("--output_file", type=str, required=True, help="The path to the output JSONL file.")
     parser.add_argument("--lora_path", type=str, default=None, help="Optional: Path to the local directory containing the LoRA adapter files.")
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="Sampling temperature for generation (default: 1.0).",
+    )
     args = parser.parse_args()
-    main(args.model, args.output_file, args.lora_path)
+    main(args.model, args.output_file, args.lora_path, args.temperature)
